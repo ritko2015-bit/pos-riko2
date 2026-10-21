@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>POS RIKO — Официант</title>
+<style>
+    :root {
+        --green: #0a3a32; --green-dark: #082e27; --gold: #bfa24e;
+        --bg: #f4f6f5; --panel: #ffffff; --danger: #d32f2f; --radius: 10px;
+    }
+    * { box-sizing: border-box; }
+    body { font-family: sans-serif; background: var(--bg); margin: 0; padding: 10px;
+        display: flex; flex-direction: column; height: 100vh; }
+    h1 { color: var(--green); text-align: center; margin: 0 0 10px; font-size: 1.35rem; }
+    .toolbar { display: flex; gap: 10px; align-items: center; justify-content: center;
+        flex-wrap: wrap; margin-bottom: 10px; }
+    .toolbar label { font-weight: bold; color: var(--green); }
+    .toolbar select, .toolbar button { padding: 8px 12px; border-radius: var(--radius);
+        border: 1px solid #ddd; font-size: .95rem; background: #fff; cursor: pointer; }
+    .toolbar button:hover { border-color: var(--gold); }
+    .layout-split { display: flex; flex: 1; gap: 16px; min-height: 0; }
+    .menu-panel { flex: 2; overflow-y: auto; padding-right: 8px; min-width: 0; }
+    .nav-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+    .btn-back { padding: 8px 14px; background: var(--green); color: #fff; border: none;
+        border-radius: var(--radius); cursor: pointer; font-weight: bold; }
+    .crumbs { color: #666; font-size: .95rem; }
+    .crumbs b { color: var(--green); }
+    .search { margin-left: auto; padding: 8px 12px; border: 1px solid #ddd;
+        border-radius: var(--radius); font-size: .95rem; min-width: 180px; }
+    .grid-cats { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+    .cat-tile { background: var(--green); color: #fff; border-radius: var(--radius);
+        padding: 22px 14px; text-align: center; cursor: pointer; font-size: 1.05rem;
+        font-weight: bold; box-shadow: 0 4px 12px rgba(10,58,50,.25); transition: transform .1s; }
+    .cat-tile:hover { transform: translateY(-2px); background: var(--green-dark); }
+    .cat-tile .icon { display: block; font-size: 1.8rem; margin-bottom: 8px; }
+    .sub-tile { background: var(--panel); border: 2px solid var(--gold); color: var(--green);
+        border-radius: var(--radius); padding: 16px; text-align: center; cursor: pointer; font-weight: bold; }
+    .sub-tile:hover { background: #fdf9ee; }
+    .legend { font-size: .8rem; color: #999; margin: 2px 0 10px; }
+    .menu-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(175px, 1fr)); gap: 12px; }
+    .item { background: #fff; padding: 12px; border-radius: var(--radius); text-align: center;
+        cursor: pointer; border: 1px solid #eee; display: flex; flex-direction: column;
+        align-items: center; transition: border-color .15s; }
+    .item:hover { border-color: var(--gold); }
+    .item-img { width: 100%; height: 110px; object-fit: cover; border-radius: 8px; margin-bottom: 8px; }
+    .card-hint { font-size: .68rem; color: #bfa24e; margin-top: 6px; }
+    .modal { display: none; position: fixed; top: 0; right: 0; bottom: 0; left: 0; background: rgba(0,0,0,.45);
+        z-index: 25; align-items: center; justify-content: center; padding: 16px; }
+    .modal.open { display: flex; }
+    .modal-box { background: #fff; border-radius: 12px; padding: 18px; max-width: 380px;
+        width: 100%; max-height: 85vh; overflow-y: auto; text-align: center; }
+    .modal-box h3 { color: var(--green); margin: 0 0 6px; }
+    .modal-img { width: 100%; max-height: 180px; object-fit: cover; border-radius: 8px; margin-bottom: 10px; }
+    .modal-variant { font-size: .9rem; color: #666; margin-bottom: 6px; }
+    .modal-variant b { color: var(--green); }
+    .modal-price { color: var(--gold); font-weight: bold; font-size: 1.2rem; margin: 10px 0 4px; }
+    .modal-mods { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin: 10px 0; }
+    .mbtn { font-size: 12px; padding: 6px 10px; border: 1px solid #ddd; border-radius: 8px;
+        background: #fff; cursor: pointer; }
+    .mbtn.active { background: var(--green); color: #fff; border-color: var(--green); }
+    .mbtn .mp { color: #7a5c00; }
+    .mbtn.active .mp { color: #ffe08a; }
+    .opt-btn.active-opt { background: #eef5f3; border-color: var(--green); }
+    .modal-qty { display: flex; align-items: center; justify-content: center; gap: 12px; margin: 12px 0; }
+    .modal-qty button { width: 34px; height: 34px; border-radius: 8px; border: 1px solid #ddd;
+        background: #fff; font-size: 1.1rem; font-weight: bold; cursor: pointer; }
+    .modal-add { width: 100%; padding: 14px; background: var(--green); color: #fff; border: none;
+        border-radius: 8px; font-weight: bold; cursor: pointer; }
+    .modal-add:hover { background: var(--green-dark); }
+    .modal-close { margin-top: 8px; width: 100%; padding: 10px; border: 1px solid #ddd;
+        border-radius: 8px; background: #fff; cursor: pointer; }
+    .setup-lbl { font-size: .8rem; color: #666; display: block; text-align: left; }
+    .setup-inp { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;
+        margin: 4px 0 10px; font-size: 1rem; box-sizing: border-box; }
+    .item .price { color: var(--gold); font-weight: bold; margin-top: 4px; }
+    .item .price .chk { color: #c0392b; font-weight: bold; }
+    .item .desc { font-size: .72rem; color: #999; margin-top: 4px; line-height: 1.3; }
+    .opt-list { margin-top: 8px; display: flex; flex-direction: column; gap: 5px; width: 100%; }
+    .opt-btn { font-size: 12px; padding: 6px 8px; border: 1px solid #ddd; border-radius: 6px;
+        background: #fff; cursor: pointer; display: flex; justify-content: space-between; gap: 6px; }
+    .opt-btn:hover { background: var(--green); color: #fff; border-color: var(--green); }
+    .cart-panel { flex: 1; background: var(--panel); border-radius: 12px; padding: 16px;
+        display: flex; flex-direction: column; box-shadow: 0 4px 16px rgba(0,0,0,.08);
+        min-width: 280px; max-height: calc(100vh - 140px); overflow-y: auto; }
+    .cart-header { font-size: 1.2rem; font-weight: bold; color: var(--green); margin-bottom: 12px;
+        border-bottom: 1px solid #eee; padding-bottom: 8px;
+        display: flex; justify-content: space-between; align-items: center; }
+    .cart-clear { font-size: .8rem; color: #999; cursor: pointer; font-weight: normal; }
+    .cart-clear:hover { color: var(--danger); }
+    #cart-items { flex: 1; }
+    .cart-empty { color: #999; text-align: center; padding: 20px 0; }
+    .cart-item { display: flex; justify-content: space-between; align-items: flex-start;
+        margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px dashed #eee; gap: 8px; }
+    .cart-mods { font-size: .85rem; color: #777; margin-top: 4px; }
+    .qty-controls { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
+    .qty-controls button { width: 26px; height: 26px; border-radius: 6px; border: 1px solid #ddd;
+        background: #fff; cursor: pointer; font-weight: bold; line-height: 1; }
+    .qty-controls button:hover { border-color: var(--green); color: var(--green); }
+    .item-right { text-align: right; white-space: nowrap; }
+    .remove { color: #999; cursor: pointer; font-weight: bold; margin-left: 8px; }
+    .remove:hover { color: var(--danger); }
+    .total-block { margin-top: auto; text-align: right; padding-top: 8px; border-top: 1px solid #eee; }
+    .total { font-size: 1.5rem; font-weight: bold; color: var(--green); margin-bottom: 12px; }
+    button.send { width: 100%; padding: 18px; background: var(--green); color: #fff; border: none;
+        border-radius: var(--radius); font-size: 1rem; font-weight: bold; cursor: pointer; }
+    button.send:hover { background: var(--green-dark); }
+    button.send:disabled { opacity: .6; cursor: wait; }
+    .log-panel { display: none; position: fixed; top: 0; right: 0; bottom: 0; left: 0; background: rgba(0,0,0,.4);
+        z-index: 20; align-items: center; justify-content: center; padding: 16px; }
+    .log-panel.open { display: flex; }
+    .log-box { background: #fff; border-radius: 12px; padding: 20px; max-width: 420px;
+        width: 100%; max-height: 80vh; overflow-y: auto; }
+    .log-box h2 { margin: 0 0 12px; color: var(--green); font-size: 1.1rem; }
+    .log-entry { padding: 8px 0; border-bottom: 1px dashed #eee; font-size: .9rem; }
+    .log-entry b { color: var(--green); }
+    .log-close { margin-top: 12px; width: 100%; padding: 10px; border: 1px solid #ddd;
+        border-radius: var(--radius); background: #fff; cursor: pointer; }
+    #toast2 { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(20px);
+        background: var(--green); color: #fff; padding: 12px 20px; border-radius: var(--radius);
+        opacity: 0; pointer-events: none; transition: opacity .25s, transform .25s;
+        z-index: 30; max-width: 90vw; text-align: center; }
+    #toast2.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    #toast2.error { background: var(--danger); }
+    .config-warning { background: #fff8e1; border: 1px solid var(--gold); color: #7a5c00;
+        padding: 10px 14px; border-radius: var(--radius); margin-bottom: 10px;
+        text-align: center; font-size: .9rem; display: none; }
+    @media (max-width: 800px) {
+        body { padding: 8px; }
+        .layout-split { flex-direction: column; gap: 10px; }
+        .menu-panel { flex: none; overflow: visible; }
+        .cart-panel { flex: none; max-height: 45vh; position: sticky; bottom: 0; z-index: 10; }
+        .search { min-width: 0; width: 100%; margin-left: 0; }
+    }
+</style>
+</head>
+<body>
+
+<h1>🍽️ POS RIKO: Официант</h1>
+<noscript>
+    <div style="background:#fdecea;color:#b71c1c;padding:14px;border-radius:10px;text-align:center;margin:10px 0;font-family:sans-serif">
+        Меню не открывается: похоже, файл открыт в просмотрщике без JavaScript
+        (например, предпросмотр «Файлов» на iPad). Откройте файл в браузере
+        (Safari/Chrome) или по ссылке локального сервера — см. инструкцию.
+    </div>
+</noscript>
+
+<div class="config-warning" id="config-warning">
+    Заполните настройки: токен бота и ID чата кухни (в редакторе — «Настройки экспорта»).
+</div>
+
+<div class="toolbar">
+    <label for="table-select">Стол:</label>
+    <select id="table-select"></select>
+    <button type="button" onclick="openLog()">📜 Журнал заказов</button>
+    <button type="button" onclick="openSetup()">⚙️ Настройки</button>
+    <input type="text" class="search" id="menu-search" placeholder="🔍 Поиск по меню…">
+</div>
+
+<div class="layout-split">
+    <div class="menu-panel" id="menu"></div>
+
+    <div class="cart-panel">
+        <div class="cart-header">
+            <span>Корзина</span>
+            <span class="cart-clear" onclick="clearCart()">очистить</span>
+        </div>
+        <div id="cart-items"></div>
+        <div class="total-block">
+            <div class="total">Итого: <span id="cart-total">0,00</span> BYN</div>
+            <button class="send" id="send-btn" onclick="sendOrder()">Отправить на кухню</button>
+        </div>
+    </div>
+</div>
+
+<div class="log-panel" id="log-panel" onclick="if (event.target === this) closeLog()">
+    <div class="log-box">
+        <h2>Отправленные заказы</h2>
+        <div id="log-entries"></div>
+        <button class="log-close" onclick="closeLog()">Закрыть</button>
+    </div>
+</div>
+
+<div id="toast2"></div>
+
+<div class="modal" id="setup-modal">
+    <div class="modal-box" style="text-align:left">
+        <h3>Настройка приложения</h3>
+        <p class="hint">Один раз на этом устройстве: подключите чат кухни. Данные сохранятся в браузере планшета.</p>
+        <label class="setup-lbl" for="setup-token">Токен бота (от @BotFather)</label>
+        <input type="text" id="setup-token" class="setup-inp" placeholder="1234567890:AA...">
+        <label class="setup-lbl" for="setup-chat">ID чата кухни</label>
+        <input type="text" id="setup-chat" class="setup-inp" placeholder="-1001234567890">
+        <label class="setup-lbl" for="setup-waiter">Имя официанта (необязательно)</label>
+        <input type="text" id="setup-waiter" class="setup-inp" placeholder="Аня">
+        <button type="button" class="modal-add" onclick="saveSetup()">Сохранить и проверить</button>
+        <button type="button" class="modal-close" onclick="closeSetup()">Работать без связи (офлайн)</button>
+    </div>
+</div>
+<div class="modal" id="item-modal" onclick="if (event.target === this) closeModal()">
+    <div class="modal-box" id="modal-box"></div>
+</div>
+
+
+<script>
+// --- НАСТРОЙКИ ---
+const CONFIG = {
+    TELEGRAM_TOKEN: 'ТВОЙ_ТОКЕН_БОТА',
+    CHAT_ID_KITCHEN: 'ID_ЧАТА_КУХНИ',
+    WAITER_NAME: '',
+    MENU_FILE_ID: ''
+};
+// ------------------------------------------
+
+const TABLES = ['Стол 1','Стол 2','Стол 3','Стол 4','Стол 5','Бар','Терраса'];
+
+let MENU = [{"id": "soups", "icon": "🍲", "name": "Супы", "items": [{"id": "soup_classic", "name": "Суп «Классический»", "opts": [{"label": "300 г", "price": 10.05}, {"label": "450 г", "price": 12.05}, {"label": "600 г", "price": 14.05}]}, {"id": "soup_mex", "name": "Суп «Мексиканский»", "opts": [{"label": "300 г", "price": 12.05}, {"label": "450 г", "price": 14.05}, {"label": "600 г", "price": 16.05}]}, {"id": "soup_pumpkin", "name": "Суп «Тыквенный»", "opts": [{"label": "350 г", "price": 12.55}, {"label": "500 г", "price": 14.55}, {"label": "650 г", "price": 16.55}]}, {"id": "soup_tabasco", "name": "Суп «Табаская»", "check": true, "opts": [{"label": "300 г", "price": 11.55}, {"label": "450 г", "price": 13.55}, {"label": "600 г", "price": 15.55}]}]}, {"id": "snacks", "icon": "🍟", "name": "Горячие закуски", "items": [{"id": "fries", "name": "Картофель фри", "opts": [{"label": "мал. 90 г", "price": 4.55}, {"label": "ср. 120 г", "price": 5.05}, {"label": "бол. 150 г", "price": 5.7}], "mods": [{"name": "без соли", "price": 0}, {"name": "с соусом", "price": 1.5, "check": true}]}, {"id": "potato_village", "name": "Картофель по-деревенски", "check": true, "opts": [{"label": "мал. 90 г", "price": 5.05}, {"label": "ср. 120 г", "price": 5.55}, {"label": "бол. 150 г", "price": 6.55}], "mods": [{"name": "с соусом", "price": 1.5, "check": true}]}, {"id": "onion_rings", "name": "Луковые кольца", "check": true, "opts": [{"label": "3 шт", "price": 5.55}, {"label": "5 шт", "price": 7.05}, {"label": "9 шт", "price": 10.05}]}, {"id": "cheese_sticks", "name": "Сырные палочки", "check": true, "opts": [{"label": "3 шт", "price": 4.55}, {"label": "5 шт", "price": 7.05}, {"label": "9 шт", "price": 9.05}]}, {"id": "strips", "name": "Стрипсы куриные", "check": true, "opts": [{"label": "3 шт", "price": 6.55}, {"label": "5 шт", "price": 9.05}, {"label": "7 шт", "price": 13.05}]}, {"id": "nuggets", "name": "Наггетсы куриные", "check": true, "opts": [{"label": "5 шт", "price": 4.55}, {"label": "8 шт", "price": 7.05}, {"label": "12 шт", "price": 9.05}]}, {"id": "wings", "name": "Куриные крылышки", "check": true, "opts": [{"label": "3 шт", "price": 5.55}, {"label": "6 шт", "price": 8.55}, {"label": "9 шт", "price": 11.55}]}, {"id": "tempura", "name": "Креветки в темпуре", "check": true, "opts": [{"label": "4 шт", "price": 7.55}, {"label": "6 шт", "price": 11.55}, {"label": "8 шт", "price": 14.55}]}]}, {"id": "salads", "icon": "🥗", "name": "Салаты", "items": [{"id": "salad_caesar_ch", "name": "Цезарь с курицей", "price": 10.05}, {"id": "salad_caesar_sh", "name": "Цезарь с креветками", "price": 15.05}, {"id": "salad_greek", "name": "Салат «Греческий»", "check": true, "price": 9.05}, {"id": "salad_pineapple", "name": "Салат с ананасом", "price": 10.05}]}, {"id": "burgers", "icon": "🍔", "name": "Бургеры и хот-доги", "subs": [{"id": "burgers", "name": "Бургеры", "items": [{"id": "burger_ham", "name": "Гамбургер", "check": true, "opts": [{"label": "с курицей", "price": 5.45}, {"label": "с говядиной", "price": 6.25}], "mods": [{"name": "без лука", "price": 0}, {"name": "острый", "price": 0}, {"name": "доп. сыр", "price": 2, "check": true}]}, {"id": "burger_cheese", "name": "Чизбургер", "check": true, "opts": [{"label": "с курицей", "price": 6.75}, {"label": "с говядиной", "price": 7.85}], "mods": [{"name": "без лука", "price": 0}, {"name": "острый", "price": 0}, {"name": "доп. сыр", "price": 2, "check": true}]}, {"id": "burger_cheese_an", "name": "Чизбургер с ананасом", "check": true, "opts": [{"label": "с курицей", "price": 6.55}], "mods": [{"name": "без лука", "price": 0}, {"name": "доп. сыр", "price": 2, "check": true}]}, {"id": "burger_mamba", "name": "Бургер «Чёрная мамба»", "check": true, "opts": [{"label": "с говядиной", "price": 11.05}], "mods": [{"name": "без лука", "price": 0}, {"name": "острый", "price": 0}]}, {"id": "burger_chef", "name": "Шефбургер", "check": true, "opts": [{"label": "с курицей", "price": 6.55}, {"label": "с говядиной", "price": 12.05}], "mods": [{"name": "без лука", "price": 0}, {"name": "острый", "price": 0}, {"name": "доп. сыр", "price": 2, "check": true}]}, {"id": "burger_triada", "name": "Чизбургер «Двойная триада»", "check": true, "opts": [{"label": "с курицей", "price": 9.55}, {"label": "с говядиной", "price": 12.05}], "mods": [{"name": "без лука", "price": 0}, {"name": "острый", "price": 0}]}, {"id": "burger_big", "name": "BIG бургер", "check": true, "opts": [{"label": "с курицей", "price": 9.55}, {"label": "с говядиной", "price": 10.05}], "mods": [{"name": "без лука", "price": 0}, {"name": "острый", "price": 0}, {"name": "доп. сыр", "price": 2, "check": true}]}]}, {"id": "hotdogs", "name": "Хот-доги", "items": [{"id": "hotdog_classic", "name": "Хот-дог классический", "check": true, "opts": [{"label": "с говядиной", "price": 6.05}]}, {"id": "hotdog_french", "name": "Хот-дог французский", "check": true, "opts": [{"label": "с говядиной", "price": 6.55}]}]}]}, {"id": "sauces", "icon": "🥣", "name": "Соусы", "items": [{"id": "sauce_ketchup", "name": "Кетчуп", "check": true, "price": 1.2}, {"id": "sauce_garlic", "name": "Чесночный", "check": true, "price": 1.2}, {"id": "sauce_sweet", "name": "Кисло-сладкий", "check": true, "price": 1.2}, {"id": "sauce_cheese", "name": "Сырный", "check": true, "price": 1.2}, {"id": "sauce_cream", "name": "Сливочный", "check": true, "price": 1.2}, {"id": "sauce_bbq", "name": "Барбекю", "check": true, "price": 1.2}]}, {"id": "combo", "icon": "🧺", "name": "Пакеты и комбо", "subs": [{"id": "packs", "name": "Пакеты", "items": [{"id": "pack_fries", "name": "Пакет фри", "desc": "300 г картофеля фри + 2 соуса на выбор", "check": true, "price": 11.05}, {"id": "pack_class", "name": "Пакет «Класс»", "desc": "90 г картофеля фри + 5 наггетсов + детский сок + 1 соус на выбор", "check": true, "price": 11.55}, {"id": "pack_nuggets", "name": "Пакет «Наггетс»", "desc": "150 г картофеля фри + 8 наггетсов + 3 стрипса + детский сок + 1 соус на выбор", "check": true, "price": 16.05}, {"id": "pack_double", "name": "«Дабл баскет»", "desc": "2 чизбургера с курицей + 150 г картофеля фри + 4 куриных крылышка + 4 стрипса + 2 соуса на выбор", "check": true, "price": 26.55}]}, {"id": "happy", "name": "Happy Meal", "items": [{"id": "happy_meal", "name": "Happy Meal 🧸", "desc": "Чизбургер с курицей + 120 г картофеля фри + 6 наггетсов + детский сок + соус на выбор + коллекционная игрушка!", "check": true, "price": 25.05}]}]}, {"id": "pizza", "icon": "🍕", "name": "Пиццы", "subs": [{"id": "pizza_list", "name": "Пиццы", "items": [{"id": "pz_pepperoni", "name": "Пепперони", "desc": "сыр «Моцарелла», колбаса «Пепперони», помидор свежий", "opts": [{"label": "32 см", "price": 23.05}, {"label": "26 см", "price": 13.05}]}, {"id": "pz_salami", "name": "Салями", "desc": "сыр «Моцарелла», колбаса «Салями», помидор свежий", "opts": [{"label": "32 см", "price": 22.55}, {"label": "26 см", "price": 12.05}]}, {"id": "pz_ham_strips", "name": "Ветчина стрипсами", "desc": "колбаса «Ветчина», огурец маринованный, базилик, грибы маринованные", "check": true, "opts": [{"label": "32 см", "price": 23.05}, {"label": "26 см", "price": 13.05}]}, {"id": "pz_chicken_strips", "name": "Курица стрипсами", "desc": "сыр «Моцарелла», куриное филе, помидор свежий, грибы", "opts": [{"label": "32 см", "price": 26.05}, {"label": "26 см", "price": 15.05}]}, {"id": "pz_4seasons", "name": "4 Сезона", "desc": "сыр «Моцарелла», колбаса «Салями», маслины, помидор свежий, грибы", "check": true, "opts": [{"label": "32 см", "price": 27.05}, {"label": "26 см", "price": 16.05}]}, {"id": "pz_4cheese", "name": "4 Сыра", "desc": "сыр «Моцарелла», «Пармезан», «Сулугуни»", "check": true, "opts": [{"label": "32 см", "price": 20.55}, {"label": "26 см", "price": 10.55}]}, {"id": "pz_hawaiian", "name": "Гавайская", "desc": "сыр «Моцарелла», куриное мясо, ананасы, кукуруза", "check": true, "opts": [{"label": "32 см", "price": 24.05}, {"label": "26 см", "price": 13.55}]}, {"id": "pz_meat", "name": "Мясная", "desc": "сыр «Моцарелла», колбаса «Ветчина», бекон, соус «Барбекю»", "check": true, "opts": [{"label": "32 см", "price": 24.05}, {"label": "26 см", "price": 13.55}]}, {"id": "pz_village", "name": "По-деревенски", "desc": "сыр «Моцарелла», слайсы бекон, картофель по-деревенски, огурец и лук маринованные", "check": true, "opts": [{"label": "32 см", "price": 24.05}, {"label": "26 см", "price": 15.05}]}, {"id": "pz_tabasco", "name": "Табаская", "desc": "сыр «Моцарелла», куриное мясо, ананасы, кукуруза", "check": true, "opts": [{"label": "32 см", "price": 27.05}, {"label": "26 см", "price": 16.55}]}, {"id": "pz_pumpkin_salami", "name": "Тыквенная с салями", "desc": "сыр «Моцарелла», слайсы бекон, грибы свежие, соус грибной", "check": true, "opts": [{"label": "32 см", "price": 24.05}, {"label": "26 см", "price": 13.55}]}]}, {"id": "pizza_adds", "name": "Добавки к пицце", "items": [{"id": "add_cheese", "name": "Сыр, 70 г", "check": true, "price": 2.5}, {"id": "add_pineapple", "name": "Ананас, 80 г", "check": true, "price": 3.5}, {"id": "add_jalapeno", "name": "Перец халапеньо, 30 г", "check": true, "price": 3.5}, {"id": "add_tomato", "name": "Помидор, 50 г", "check": true, "price": 1.5}, {"id": "add_chicken", "name": "Мясо куриное, 100 г", "check": true, "price": 2.5}, {"id": "add_hunt", "name": "Колбаса охотничья, 100 г", "check": true, "price": 3.5}, {"id": "add_bacon", "name": "Бекон с салями, 50 г", "check": true, "price": 3.5}, {"id": "add_salami", "name": "Колбаса салями, 100 г", "check": true, "price": 3.5}, {"id": "add_olives", "name": "Маслины, 50 г", "check": true, "price": 1.2}, {"id": "add_ham", "name": "Колбаса ветчина, 100 г", "check": true, "price": 2.5}, {"id": "add_pepperoni", "name": "Колбаса пепперони, 100 г", "check": true, "price": 4.0}, {"id": "add_pepper", "name": "Перец свежий, 50 г", "check": true, "price": 1.2}]}]}, {"id": "drinks", "icon": "🥤", "name": "Напитки", "subs": [{"id": "coffee", "name": "Кофе", "items": [{"id": "cf_espresso", "name": "Эспрессо", "opts": [{"label": "одинарный", "price": 4.05}, {"label": "двойной", "price": 4.55}]}, {"id": "cf_americano", "name": "Американо", "check": true, "opts": [{"label": "250 мл", "price": 5.05}, {"label": "350 мл", "price": 6.05}], "mods": [{"name": "с молоком", "price": 0.7, "check": true}]}, {"id": "cf_cappuccino", "name": "Капучино", "check": true, "opts": [{"label": "250 мл", "price": 5.55}, {"label": "350 мл", "price": 7.55}], "mods": [{"name": "сироп ванильный", "price": 0.9, "check": true}]}, {"id": "cf_latte", "name": "Латте", "check": true, "opts": [{"label": "250 мл", "price": 5.55}, {"label": "350 мл", "price": 7.05}], "mods": [{"name": "сироп ванильный", "price": 0.9, "check": true}]}, {"id": "cf_raf", "name": "Раф", "check": true, "opts": [{"label": "250 мл", "price": 6.05}, {"label": "350 мл", "price": 7.55}], "mods": [{"name": "двойной эспрессо", "price": 1.5, "check": true}]}, {"id": "cf_flat", "name": "Флэт уайт", "check": true, "opts": [{"label": "250 мл", "price": 5.55}, {"label": "350 мл", "price": 7.05}]}, {"id": "cf_mocha", "name": "Моккачино", "check": true, "opts": [{"label": "250 мл", "price": 6.05}, {"label": "350 мл", "price": 7.05}]}, {"id": "cf_tonic", "name": "Эспрессо-тоник", "check": true, "price": 6.05}, {"id": "cf_matcha", "name": "Матча", "check": true, "price": 6.55}]}, {"id": "cocktails", "name": "Коктейли и сезонные", "items": [{"id": "ck_laguna", "name": "Голубая лагуна", "check": true, "opts": [{"label": "с алкоголем", "price": 9.05}, {"label": "безалкогольный", "price": 6.55}]}, {"id": "ck_mojito", "name": "Мохито Кюрасао", "check": true, "opts": [{"label": "с алкоголем", "price": 9.05}, {"label": "безалкогольный", "price": 6.55}]}, {"id": "ck_tropic", "name": "Тропический", "check": true, "opts": [{"label": "с алкоголем", "price": 9.05}, {"label": "безалкогольный", "price": 6.55}]}, {"id": "ck_glogg", "name": "Глинтвейн", "check": true, "opts": [{"label": "с алкоголем", "price": 9.05}, {"label": "безалкогольный", "price": 6.55}]}, {"id": "ck_punch", "name": "Вишнёвый пунш", "check": true, "opts": [{"label": "с алкоголем", "price": 9.55}, {"label": "безалкогольный", "price": 6.95}]}, {"id": "ck_multishake", "name": "Multishake", "check": true, "opts": [{"label": "с алкоголем", "price": 9.05}, {"label": "безалкогольный", "price": 6.55}]}]}, {"id": "milk", "name": "Молочные коктейли", "items": [{"id": "mk_mint", "name": "Молочный коктейль «Мятный»", "check": true, "price": 6.55}, {"id": "mk_salt_nut", "name": "Молочный коктейль «Солёно-ореховый»", "check": true, "price": 7.05}, {"id": "mk_choc_pnut", "name": "Молочный коктейль «Шоколадно-арахисовый»", "check": true, "price": 7.55}, {"id": "mk_matcha", "name": "Молочный коктейль «Матча»", "check": true, "price": 6.55}]}, {"id": "hot_drinks", "name": "Горячие напитки", "items": [{"id": "hd_cocoa", "name": "Какао", "check": true, "price": 6.05}, {"id": "hd_choco", "name": "Горячий шоколад", "check": true, "price": 6.05}]}, {"id": "cold", "name": "Холодные напитки", "items": [{"id": "cd_cola", "name": "Coca-Cola", "price": 3.05}, {"id": "cd_sprite", "name": "Sprite", "price": 3.05}, {"id": "cd_juice", "name": "Сок (взрослый)", "check": true, "opts": [{"label": "400 мл", "price": 3.05}]}, {"id": "cd_juice_kid", "name": "Сок детский", "price": 1.65}]}, {"id": "desserts", "name": "Десерты", "items": [{"id": "ds_ice", "name": "Мороженое", "check": true, "opts": [{"label": "100 г", "price": 4.05}, {"label": "200 г", "price": 6.05}]}]}]}];
+
+function lsGet(key) {
+    try { return localStorage.getItem(key); } catch (e) { return null; }
+}
+function lsSet(key, val) {
+    try { localStorage.setItem(key, val); } catch (e) {}
+}
+let state = { view: 'root', cat: null, sub: null, search: '' };
+let cart = [];
+let orderCounter = Number(lsGet('pos_riko_order_no') || 0);
+
+function toast(msg, isError) {
+    const t = document.getElementById('toast2');
+    t.textContent = msg;
+    t.className = 'show' + (isError ? ' error' : '');
+    clearTimeout(t._timer);
+    t._timer = setTimeout(() => t.className = '', 3000);
+}
+function cfgGet() {
+    let c = null;
+    try { c = JSON.parse(lsGet('pos_riko_cfg') || 'null'); } catch (e) {}
+    return c || {};
+}
+function tgToken() {
+    const t = CONFIG.TELEGRAM_TOKEN;
+    if (t && t !== 'ТВОЙ_ТОКЕН_БОТА' && t.indexOf('__') !== 0) return t;
+    return cfgGet().token || '';
+}
+function tgChat() {
+    const c = CONFIG.CHAT_ID_KITCHEN;
+    if (c && c !== 'ID_ЧАТА_КУХНИ' && c.indexOf('__') !== 0) return c;
+    return cfgGet().chat || '';
+}
+function waiterName() {
+    const n = CONFIG.WAITER_NAME;
+    if (n && n !== '__WAITER_NAME__' && n.indexOf('__') !== 0) return n;
+    return cfgGet().waiter || '';
+}
+function configReady() {
+    return !!tgToken() && !!tgChat();
+}
+function fmt(n) { return Number(n).toFixed(2).replace('.', ','); }
+function findCat(catId) { return MENU.find(c => c.id === catId); }
+function findSub(catId, subId) {
+    const cat = findCat(catId);
+    return cat && cat.subs ? cat.subs.find(s => s.id === subId) : null;
+}
+function flatItems() {
+    const out = [];
+    MENU.forEach(cat => {
+        if (cat.items) cat.items.forEach(it => out.push({ cat, item: it }));
+        if (cat.subs) cat.subs.forEach(sub => sub.items.forEach(it => out.push({ cat, sub, item: it })));
+    });
+    return out;
+}
+
+function clearSearchBox() {
+    const si = document.getElementById('menu-search');
+    if (si) si.value = '';
+}
+function goRoot() { state = { view: 'root', cat: null, sub: null, search: state.search }; renderMenu(); }
+function openCat(catId) { clearSearchBox(); state = { view: 'cat', cat: catId, sub: null, search: '' }; renderMenu(); }
+function openSub(subId) { clearSearchBox(); state = { view: 'sub', cat: state.cat, sub: subId, search: '' }; renderMenu(); }
+
+function itemKey(item, opt, modNames) {
+    return item.id + '|' + (opt ? opt.label : '') + '|' + modNames.slice().sort().join(',');
+}
+function addToCart(item, opt, modNames, qty) {
+    const q = qty || 1;
+    const mods = (item.mods || []).filter(m => modNames.includes(m.name));
+    const key = itemKey(item, opt, mods.map(m => m.name));
+    const basePrice = opt ? opt.price : item.price;
+    const existing = cart.find(c => c.key === key);
+    if (existing) existing.qty += q;
+    else cart.push({ key, id: item.id, name: item.name, optLabel: opt ? opt.label : '', basePrice, mods, qty: q });
+    renderCart();
+}
+function changeQty(index, delta) { cart[index].qty += delta; if (cart[index].qty <= 0) cart.splice(index, 1); renderCart(); }
+function removeFromCart(index) { cart.splice(index, 1); renderCart(); }
+function clearCart() { if (!cart.length) return; cart = []; renderCart(); }
+function lineTotal(line) { return (line.basePrice + line.mods.reduce((s, m) => s + m.price, 0)) * line.qty; }
+
+function renderCart() {
+    const container = document.getElementById('cart-items');
+    container.innerHTML = '';
+    if (!cart.length) {
+        container.innerHTML = '<div class="cart-empty">Корзина пуста — выберите блюда из меню</div>';
+    }
+    let total = 0;
+    cart.forEach((line, i) => {
+        total += lineTotal(line);
+        const title = line.optLabel ? line.name + ' (' + line.optLabel + ')' : line.name;
+        const modsText = line.mods.length
+            ? '<span class="cart-mods">' + line.mods.map(m => m.name).join(', ') + '</span><br>' : '';
+        const div = document.createElement('div');
+        div.className = 'cart-item';
+        div.innerHTML =
+            '<div><strong>' + title + '</strong><br>' + modsText +
+            '<div class="qty-controls">' +
+            '<button type="button" onclick="changeQty(' + i + ', -1)">−</button>' +
+            '<span>' + line.qty + '</span>' +
+            '<button type="button" onclick="changeQty(' + i + ', 1)">+</button>' +
+            '</div></div>' +
+            '<div class="item-right"><span>' + fmt(lineTotal(line)) + ' BYN</span>' +
+            '<span class="remove" onclick="removeFromCart(' + i + ')">×</span></div>';
+        container.appendChild(div);
+    });
+    document.getElementById('cart-total').textContent = fmt(total);
+}
+
+function itemCard(item) {
+    const el = document.createElement('div');
+    el.className = 'item';
+    const priceHtml = item.opts
+        ? '<span class="price">выберите вариант</span>'
+        : '<span class="price">' + fmt(item.price) + ' BYN' + (item.check ? ' <span class="chk">*</span>' : '') + '</span>';
+    el.innerHTML =
+        (item.img ? '<img class="item-img" src="' + item.img + '" alt="">' : '') +
+        '<strong>' + item.name + '</strong>' + priceHtml +
+        (item.desc ? '<div class="desc">' + item.desc + '</div>' : '');
+
+    if (item.opts) {
+        const list = document.createElement('div');
+        list.className = 'opt-list';
+        item.opts.forEach(opt => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'opt-btn';
+            btn.innerHTML = '<span>' + opt.label + '</span><span>' + fmt(opt.price) + ' BYN' + (item.check ? ' *' : '') + '</span>';
+            btn.onclick = (e) => { e.stopPropagation(); openItemModal(item, opt); };
+            list.appendChild(btn);
+        });
+        el.appendChild(list);
+    } else if (item.mods && item.mods.length) {
+        const hint = document.createElement('div');
+        hint.className = 'card-hint';
+        hint.textContent = 'нажмите — добавки';
+        el.appendChild(hint);
+    }
+
+    el.onclick = () => openItemModal(item);
+    return el;
+}
+
+let modalCtx = null;
+function openItemModal(item, presetOpt) {
+    modalCtx = { item, opt: presetOpt || null, mods: new Set(), qty: 1 };
+    if (!modalCtx.opt && item.opts && item.opts.length) modalCtx.opt = item.opts[0];
+    renderModal();
+    document.getElementById('item-modal').classList.add('open');
+}
+function closeModal() {
+    document.getElementById('item-modal').classList.remove('open');
+    modalCtx = null;
+}
+function modalToggleMod(name) {
+    if (modalCtx.mods.has(name)) modalCtx.mods.delete(name); else modalCtx.mods.add(name);
+    renderModal();
+}
+function modalQty(delta) {
+    modalCtx.qty = Math.max(1, modalCtx.qty + delta);
+    renderModal();
+}
+function modalTotal() {
+    const it = modalCtx.item;
+    const base = modalCtx.opt ? modalCtx.opt.price : it.price;
+    const mods = (it.mods || []).filter(m => modalCtx.mods.has(m.name));
+    return (base + mods.reduce((s, m) => s + m.price, 0)) * modalCtx.qty;
+}
+function renderModal() {
+    const it = modalCtx.item;
+    const box = document.getElementById('modal-box');
+    let html = '';
+    if (it.img) html += '<img class="modal-img" src="' + it.img + '" alt="">';
+    html += '<h3>' + it.name + '</h3>';
+    if (it.desc) html += '<div class="desc">' + it.desc + '</div>';
+    if (it.opts && modalCtx.opt) {
+        html += '<div class="modal-variant">Вариант: <b>' + modalCtx.opt.label + '</b></div>';
+    }
+    if (it.mods && it.mods.length) {
+        html += '<div class="modal-mods">';
+        it.mods.forEach(m => {
+            const escName = m.name.replace(/'/g, "\\'");
+            const pricePart = m.price ? ' <span class="mp">+' + fmt(m.price) + (m.check ? ' *' : '') + '</span>' : '';
+            html += '<button type="button" class="mbtn' + (modalCtx.mods.has(m.name) ? ' active' : '') +
+                '" onclick="modalToggleMod(\'' + escName + '\')">' + m.name + pricePart + '</button>';
+        });
+        html += '</div>';
+    }
+    html += '<div class="modal-price">Итого: ' + fmt(modalTotal()) + ' BYN' + (it.check ? ' <span class="chk">*</span>' : '') + '</div>';
+    html += '<div class="modal-qty"><button type="button" onclick="modalQty(-1)">−</button><b>' + modalCtx.qty + '</b><button type="button" onclick="modalQty(1)">+</button></div>';
+    html += '<button type="button" class="modal-add" onclick="modalAdd()">В корзину</button>';
+    html += '<button type="button" class="modal-close" onclick="closeModal()">Закрыть</button>';
+    box.innerHTML = html;
+}
+function modalAdd() {
+    if (modalCtx.item.opts && !modalCtx.opt) return toast('Выберите вариант', true);
+    addToCart(modalCtx.item, modalCtx.opt, [...modalCtx.mods], modalCtx.qty);
+    closeModal();
+    toast('Добавлено в корзину');
+}
+
+function renderMenu() {
+    const container = document.getElementById('menu');
+    container.innerHTML = '';
+
+    if (state.search) {
+        const q = state.search.trim().toLowerCase();
+        const matches = flatItems().filter(x => x.item.name.toLowerCase().includes(q));
+        const navBar = document.createElement('div');
+        navBar.className = 'nav-bar';
+        navBar.innerHTML = '<div class="crumbs">Поиск: <b>' + matches.length + ' совпадений</b></div>';
+        container.appendChild(navBar);
+        const grid = document.createElement('div');
+        grid.className = 'menu-grid';
+        matches.forEach(x => grid.appendChild(itemCard(x.item)));
+        container.appendChild(grid);
+        if (!matches.length) {
+            const empty = document.createElement('div');
+            empty.className = 'cart-empty';
+            empty.textContent = 'Ничего не найдено';
+            container.appendChild(empty);
+        }
+        return;
+    }
+
+    if (state.view === 'root') {
+        const grid = document.createElement('div');
+        grid.className = 'grid-cats';
+        MENU.forEach(cat => {
+            const tile = document.createElement('div');
+            tile.className = 'cat-tile';
+            tile.innerHTML = '<span class="icon">' + (cat.icon || '🍽️') + '</span>' + cat.name;
+            tile.onclick = () => openCat(cat.id);
+            grid.appendChild(tile);
+        });
+        container.appendChild(grid);
+        return;
+    }
+
+    const cat = findCat(state.cat);
+    const navBar = document.createElement('div');
+    navBar.className = 'nav-bar';
+    const crumbs = '<span class="crumbs" style="cursor:pointer" onclick="goRoot()">Меню</span>' +
+        (state.view === 'sub'
+            ? ' / <span class="crumbs" style="cursor:pointer" onclick="openCat(\'' + cat.id + '\')">' + cat.name + '</span> / <b>' + findSub(state.cat, state.sub).name + '</b>'
+            : ' / <b>' + cat.name + '</b>');
+    navBar.innerHTML = '<button type="button" class="btn-back" onclick="' +
+        (state.view === 'sub' ? "openCat('" + cat.id + "')" : 'goRoot()') + '">← Назад</button>' + crumbs;
+    container.appendChild(navBar);
+
+    if (state.view === 'cat' && cat.subs) {
+        const grid = document.createElement('div');
+        grid.className = 'grid-cats';
+        cat.subs.forEach(sub => {
+            const tile = document.createElement('div');
+            tile.className = 'sub-tile';
+            tile.textContent = sub.name + '  →';
+            tile.onclick = () => openSub(sub.id);
+            grid.appendChild(tile);
+        });
+        container.appendChild(grid);
+        return;
+    }
+
+    const items = (state.view === 'sub') ? findSub(state.cat, state.sub).items : (cat.items || []);
+    const grid = document.createElement('div');
+    grid.className = 'menu-grid';
+    items.forEach(item => grid.appendChild(itemCard(item)));
+    container.appendChild(grid);
+
+    const legend = document.createElement('div');
+    legend.className = 'legend';
+    legend.innerHTML = '<span style="color:#c0392b">*</span> — цену нужно сверить с бумажным меню (скан читался неточно)';
+    container.appendChild(legend);
+}
+
+async function sendOrder() {
+    if (!cart.length) return toast('Корзина пуста', true);
+    if (!configReady()) {
+        toast('Сначала заполните токен и ID чата', true);
+        return;
+    }
+    const btn = document.getElementById('send-btn');
+    btn.disabled = true;
+    btn.textContent = 'Отправляю…';
+    const table = document.getElementById('table-select').value;
+    const time = new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+    orderCounter++;
+    lsSet('pos_riko_order_no', String(orderCounter));
+    const lines = cart.map((line, i) => {
+        const opt = line.optLabel ? ' (' + line.optLabel + ')' : '';
+        const mods = line.mods.length ? ' [' + line.mods.map(m => m.name).join(', ') + ']' : '';
+        return (i + 1) + '. ' + line.name + opt + mods + ' ×' + line.qty + ' — ' + fmt(lineTotal(line)) + ' BYN';
+    });
+    const total = cart.reduce((s, l) => s + lineTotal(l), 0);
+    const waiterLine = waiterName() ? '\n👤 Официант: ' + waiterName() : '';
+    const text = '🍳 НОВЫЙ ЗАКАЗ #' + orderCounter + '\n📋 Стол: ' + table + '\n🕒 ' + time + waiterLine +
+        '\n\n' + lines.join('\n') + '\n\n💵 Итого: ' + fmt(total) + ' BYN\n\n#принять #готово';
+    try {
+        const resp = await fetch('https://api.telegram.org/bot' + tgToken() + '/sendMessage?chat_id=' + encodeURIComponent(tgChat()) + '&text=' + encodeURIComponent(text));
+        const data = await resp.json();
+        if (!data.ok) throw new Error(data.description || 'Telegram API error');
+        saveToLog({ no: orderCounter, time, table, total, count: cart.reduce((s, l) => s + l.qty, 0) });
+        toast('Заказ #' + orderCounter + ' отправлен на кухню ✅');
+        cart = [];
+        renderCart();
+    } catch (e) {
+        orderCounter--;
+        lsSet('pos_riko_order_no', String(orderCounter));
+        toast('Ошибка отправки: ' + e.message, true);
+        console.error(e);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Отправить на кухню';
+    }
+}
+
+function saveToLog(entry) {
+    const log = JSON.parse(lsGet('pos_riko_log') || '[]');
+    log.unshift(entry);
+    lsSet('pos_riko_log', JSON.stringify(log.slice(0, 50)));
+}
+function openLog() {
+    const log = JSON.parse(lsGet('pos_riko_log') || '[]');
+    const box = document.getElementById('log-entries');
+    box.innerHTML = log.length
+        ? log.map(e => '<div class="log-entry"><b>#' + e.no + '</b> — ' + e.time + ', ' + e.table + '<br>' + e.count + ' поз. на ' + fmt(e.total) + ' BYN</div>').join('')
+        : '<div class="cart-empty">Пока пусто</div>';
+    document.getElementById('log-panel').classList.add('open');
+}
+function closeLog() {
+    document.getElementById('log-panel').classList.remove('open');
+}
+
+async function fetchRemoteMenu() {
+    if (!tgToken() || !tgChat()) return;
+    let fileId = CONFIG.MENU_FILE_ID && CONFIG.MENU_FILE_ID !== '__MENU_FILE_ID__' ? CONFIG.MENU_FILE_ID : '';
+    let chatOk = false;
+    try {
+        const r = await fetch('https://api.telegram.org/bot' + tgToken() + '/getChat?chat_id=' + encodeURIComponent(tgChat()));
+        const d = await r.json();
+        chatOk = !!d.ok;
+        const pm = d.ok && d.result && d.result.pinned_message;
+        if (pm && pm.document && pm.document.file_id) fileId = pm.document.file_id;
+    } catch (e) {}
+    if (!fileId) {
+        if (!chatOk) toast('Нет связи с чатом: проверьте токен, ID чата и что бот добавлен в чат', true);
+        else toast('В чате нет закреплённого меню — опубликуйте его в редакторе', true);
+        return;
+    }
+    const fail = (msg) => {
+        const cachedL = lsGet('pos_riko_menu_light');
+        const cachedF = lsGet('pos_riko_menu_remote');
+        if (!cachedL && !cachedF) toast('Меню не обновилось (' + msg + ')', true);
+    };
+    let stage = 'проверка getFile';
+    try {
+        const g = await fetch('https://api.telegram.org/bot' + tgToken() + '/getFile?file_id=' + encodeURIComponent(fileId));
+        const gd = await g.json();
+        if (!gd.ok || !gd.result.file_path) throw new Error(gd.description || 'Telegram не отдал файл меню');
+        stage = 'скачивание файла';
+        let raw = null;
+        for (let i = 0; i < 3 && !raw; i++) {
+            try {
+                const dl = await fetch('https://api.telegram.org/file/bot' + tgToken() + '/' + gd.result.file_path);
+                if (!dl.ok) throw new Error('код ' + dl.status);
+                raw = await dl.text();
+            } catch (e2) {
+                if (i === 2) throw new Error(e2.message || 'нет связи');
+                await new Promise(res => setTimeout(res, 2000));
+            }
+        }
+        stage = 'разбор файла';
+        let data = null;
+        try { data = JSON.parse(raw); } catch (e3) { throw new Error('файл меню не читается (не JSON)'); }
+        if (Array.isArray(data) && data.length) {
+            MENU = data;
+            lsSet('pos_riko_menu_remote', JSON.stringify(data));
+            renderMenu();
+            toast('Меню обновлено с кухни ✅ (' + Math.round(raw.length / 1024) + ' КБ)');
+            return;
+        }
+        if (data && Array.isArray(data.items) && data.items.length) {
+            MENU = data.items;
+            lsSet('pos_riko_menu_light', JSON.stringify(data));
+            renderMenu();
+            toast('Меню обновлено с кухни ✅ (лёгкая версия, ' + Math.round(raw.length / 1024) + ' КБ)');
+            if (data.photosFileId) {
+                fetch('https://api.telegram.org/bot' + tgToken() + '/getFile?file_id=' + encodeURIComponent(data.photosFileId))
+                    .then(r2 => r2.json())
+                    .then(gd2 => gd2.ok ? fetch('https://api.telegram.org/file/bot' + tgToken() + '/' + gd2.result.file_path) : null)
+                    .then(dl2 => dl2 ? dl2.text() : null)
+                    .then(raw2 => raw2 ? JSON.parse(raw2) : null)
+                    .then(full => {
+                        if (Array.isArray(full) && full.length) {
+                            MENU = full;
+                            lsSet('pos_riko_menu_remote', JSON.stringify(full));
+                            renderMenu();
+                        }
+                    })
+                    .catch(e4 => {});
+            }
+            return;
+        }
+        throw new Error('неизвестный формат файла меню');
+    } catch (e) {
+        fail('этап ' + stage + ': ' + (e.message || 'нет связи'));
+        const cachedL = lsGet('pos_riko_menu_light');
+        if (cachedL) {
+            try {
+                const l = JSON.parse(cachedL);
+                if (l && Array.isArray(l.items) && l.items.length) { MENU = l.items; renderMenu(); return; }
+            } catch (e5) {}
+        }
+        const cachedF = lsGet('pos_riko_menu_remote');
+        if (cachedF) {
+            try {
+                const f = JSON.parse(cachedF);
+                if (Array.isArray(f) && f.length) { MENU = f; renderMenu(); }
+            } catch (e6) {}
+        }
+    }
+}
+
+function openSetup() {
+    const c = cfgGet();
+    document.getElementById('setup-token').value = c.token || '';
+    document.getElementById('setup-chat').value = c.chat || '';
+    document.getElementById('setup-waiter').value = c.waiter || '';
+    document.getElementById('setup-modal').classList.add('open');
+}
+function closeSetup() {
+    document.getElementById('setup-modal').classList.remove('open');
+}
+async function saveSetup() {
+    const token = document.getElementById('setup-token').value.trim();
+    const chat = document.getElementById('setup-chat').value.trim();
+    const waiter = document.getElementById('setup-waiter').value.trim();
+    if (!token || !chat) return toast('Заполните токен и ID чата', true);
+    toast('Проверяю подключение…');
+    try {
+        const r = await fetch('https://api.telegram.org/bot' + token + '/getMe');
+        const d = await r.json();
+        if (!d.ok) throw new Error('токен не принят Telegram');
+        const r2 = await fetch('https://api.telegram.org/bot' + token + '/getChat?chat_id=' + encodeURIComponent(chat));
+        const d2 = await r2.json();
+        if (!d2.ok) throw new Error('ID чата не принят: ' + (d2.description || ''));
+        lsSet('pos_riko_cfg', JSON.stringify({ token, chat, waiter }));
+        closeSetup();
+        toast('Подключено ✅');
+        fetchRemoteMenu();
+    } catch (e) {
+        toast('Не сохранилось: ' + e.message, true);
+    }
+}
+
+(function init() {
+    const select = document.getElementById('table-select');
+    TABLES.forEach(t => {
+        const opt = document.createElement('option');
+        opt.value = t;
+        opt.textContent = t;
+        select.appendChild(opt);
+    });
+    document.getElementById('menu-search').oninput = (e) => {
+        state.search = e.target.value;
+        renderMenu();
+    };
+    if (!configReady()) {
+        openSetup();
+    }
+    renderMenu();
+    renderCart();
+    fetchRemoteMenu();
+})();
+</script>
+
+</body>
+</html>
